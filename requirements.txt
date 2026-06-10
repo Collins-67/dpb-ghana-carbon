@@ -1,0 +1,13 @@
+earthengine-api
+geopandas
+folium
+numpy
+pandas
+matplotlib
+scikit-learn
+scipy
+Pillow
+requests
+python-calamine
+openpyxl
+voila
