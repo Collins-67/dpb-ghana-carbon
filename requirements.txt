@@ -1,0 +1,12 @@
+streamlit
+streamlit-folium
+folium
+geopandas
+pandas
+numpy
+matplotlib
+scikit-learn
+scipy
+Pillow
+requests
+python-calamine

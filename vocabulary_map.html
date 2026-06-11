@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: Arial, sans-serif; background:#fff; color:#222; margin:0; padding:16px; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center; }
+  .controls button { font-size:12px; padding:4px 14px; border-radius:20px; cursor:pointer;
+    border:1px solid #ccc; background:#f5f5f5; color:#555; transition:all .15s; }
+  .controls button.active { background:#1B3A6B; border-color:#1B3A6B; color:#fff; font-weight:bold; }
+  .controls button:hover { border-color:#1B3A6B; color:#1B3A6B; }
+  .legend-row { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:10px;
+    font-size:12px; color:#555; align-items:center; }
+  .leg { display:flex; align-items:center; gap:5px; }
+  .leg-dot { width:10px; height:10px; border-radius:50%; }
+  #vmap { display:block; border:1px solid #e8e8e8; border-radius:10px; background:#fafafa; cursor:default; }
+  .detail-panel { background:#f7f9fc; border-radius:8px; border:1px solid #e0e8f0;
+    padding:14px 16px; margin-top:12px; font-size:13px; min-height:80px; }
+  .dp-title { font-weight:bold; font-size:14px; color:#1B3A6B; margin-bottom:5px; }
+  .dp-def   { color:#555; margin-bottom:10px; line-height:1.55; }
+  .std-pills { display:flex; gap:7px; flex-wrap:wrap; }
+  .pill { border-radius:20px; padding:3px 10px; font-size:11px;
+    font-weight:bold; border:1px solid; display:inline-block; margin-bottom:4px; }
+  .pill-exact { background:#e8f5e9; color:#1b5e20; border-color:#388e3c; }
+  .pill-close { background:#fff8e1; color:#e65100; border-color:#f57c00; }
+  .pill-none  { background:#f5f5f5; color:#757575; border-color:#bdbdbd; }
+  .hint { font-size:11px; color:#aaa; text-align:center; margin-top:5px; }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <span style="font-size:12px;color:#888;font-weight:bold">Filter:</span>
+  <button id="btn-all"   class="active" onclick="setFilter('all')">All concepts</button>
+  <button id="btn-exact" onclick="setFilter('exact')">Exact matches</button>
+  <button id="btn-close" onclick="setFilter('close')">Close matches</button>
+  <button id="btn-none"  onclick="setFilter('none')">No equivalent</button>
+</div>
+
+<div class="legend-row">
+  <div class="leg"><div class="leg-dot" style="background:#2e7d32"></div>Exact match</div>
+  <div class="leg"><div class="leg-dot" style="background:#ef6c00"></div>Close match</div>
+  <div class="leg"><div class="leg-dot" style="background:#9e9e9e"></div>No equivalent</div>
+  <div class="leg" style="margin-left:auto;font-size:11px;color:#aaa">
+    Click a concept &middot; drag to pan &middot; scroll to zoom
+  </div>
+</div>
+
+<svg id="vmap" width="100%" viewBox="0 0 720 520"></svg>
+<p class="hint">10 DPB concepts mapped across VM0047 &middot; Open Forest Protocol &middot; Gold Standard</p>
+
+<div class="detail-panel" id="dp">
+  <div class="dp-title">Select a concept node to explore</div>
+  <div class="dp-def">Click any circle to see its definition and cross-standard mappings.</div>
+</div>
+
+<script>
+var CONCEPTS = [
+  { id:'pb', short:['Performance','Benchmark'],
+    label:'Performance Benchmark (PB)',
+    def:'Difference in stocking index between project plots and matched controls. Positive value = additionality signal.',
+    mappings:[
+      {std:'VM0047',   term:'Performance Benchmark',              match:'exact', uri:'vm0047#PerformanceBenchmark'},
+      {std:'OFP',      term:'Project vs Baseline Performance',    match:'close', uri:'ofp#ProjectVsBaseline'},
+      {std:'Gold Std', term:'Additionality Performance Indicator',match:'close', uri:'gs#AdditionalityIndicator'}
+    ]},
+  { id:'ndfi', short:['Stocking','Index (NDFI)'],
+    label:'Stocking Index - NDFI',
+    def:'NDFI = (NIR-SWIR1)/(NIR+SWIR1). Spectral proxy for woody biomass. Preferred over NDVI for tropical forest.',
+    mappings:[
+      {std:'VM0047',   term:'Stocking Index',        match:'exact', uri:'vm0047#StockingIndex'},
+      {std:'OFP',      term:'Vegetation Index',       match:'close', uri:'ofp#VegetationIndex'},
+      {std:'Gold Std', term:'Vegetation Cover Proxy', match:'close', uri:'gs#VegetationCoverProxy'}
+    ]},
+  { id:'donor', short:['Donor','Pool'],
+    label:'Donor Pool',
+    def:'Full set of candidate control plots from unmanaged surrounding landscape, before categorical filtering.',
+    mappings:[
+      {std:'VM0047',   term:'Donor Pool of Candidate Control Sites', match:'exact', uri:'vm0047#DonorPool'},
+      {std:'OFP',      term:'Reference Area Pool',                   match:'close', uri:'ofp#ReferenceAreaPool'},
+      {std:'Gold Std', term:'Baseline Reference Pool',               match:'close', uri:'gs#BaselineReferencePool'}
+    ]},
+  { id:'knn', short:['k-NN','Matching'],
+    label:'k-NN Matching',
+    def:'k=3 nearest neighbours on standardised location (lon, lat). NDFI excluded from matching to preserve additionality signal.',
+    mappings:[
+      {std:'VM0047',   term:'Multivariate Distance Matching', match:'exact', uri:'vm0047#MultivariateMatching'},
+      {std:'OFP',      term:'Plot Matching / Pairing',         match:'close', uri:'ofp#PlotMatching'},
+      {std:'Gold Std', term:'Comparative Site Analysis',       match:'close', uri:'gs#ComparativeSiteAnalysis'}
+    ]},
+  { id:'cat', short:['Categorical','Filter'],
+    label:'Categorical Covariate Filter',
+    def:'Pre-matching filter: only donor plots sharing the same ecoregion and land tenure as each project plot are eligible.',
+    mappings:[
+      {std:'VM0047',   term:'Categorical Variables (ecoregion, tenure)', match:'exact', uri:'vm0047#CategoricalVariables'},
+      {std:'OFP',      term:'Stratification Variables',                   match:'exact', uri:'ofp#StratificationVariables'},
+      {std:'Gold Std', term:'Baseline Stratification Criteria',           match:'exact', uri:'gs#BaselineStratification'}
+    ]},
+  { id:'ci', short:['90%','Conf. Interval'],
+    label:'90% Confidence Interval',
+    def:'Bootstrap 90% CI on PB values. VM0047 Tier 2 mandatory requirement - CI must be entirely above zero for credit issuance.',
+    mappings:[
+      {std:'VM0047',   term:'90% CI (Tier 2)',         match:'exact', uri:'vm0047#ConfidenceInterval'},
+      {std:'OFP',      term:'90% Confidence Interval', match:'exact', uri:'ofp#ConfidenceInterval'},
+      {std:'Gold Std', term:'90% Confidence Interval', match:'exact', uri:'gs#ConfidenceInterval'}
+    ]},
+  { id:'add', short:['Addi-','tionality'],
+    label:'Additionality',
+    def:'Carbon removal that would not have occurred without the project. Confirmed when PB > 0 and 90% CI is entirely above zero.',
+    mappings:[
+      {std:'VM0047',   term:'Additionality (DPB mechanism)',      match:'close', uri:'vm0047#Additionality'},
+      {std:'OFP',      term:'Additionality (counterfactual rate)', match:'close', uri:'ofp#Additionality'},
+      {std:'Gold Std', term:'Additionality (CDM tool)',            match:'close', uri:'gs#Additionality'}
+    ]},
+  { id:'bal', short:['Balance','Check'],
+    label:'Balance Check',
+    def:'Standardised difference of means < 0.25 post-matching. Confirms project and control groups are statistically comparable.',
+    mappings:[
+      {std:'VM0047',   term:'Std diff of means < 0.25',    match:'exact', uri:'vm0047#StandardisedDifference'},
+      {std:'OFP',      term:'Covariate Balance Assessment', match:'close', uri:'ofp#CovariateBalance'},
+      {std:'Gold Std', term:'Baseline Comparability Check', match:'close', uri:'gs#BaselineComparability'}
+    ]},
+  { id:'dyn', short:['Dynamic','Baseline'],
+    label:'Dynamic Baseline',
+    def:'Annually updated baseline from current satellite observations of unprotected land. VM0047-specific.',
+    mappings:[
+      {std:'VM0047',   term:'Dynamic Performance Baseline',              match:'exact', uri:'vm0047#DynamicBaseline'},
+      {std:'OFP',      term:'No equivalent (static historical baseline)', match:'none',  uri:null},
+      {std:'Gold Std', term:'No equivalent (static modelled baseline)',   match:'none',  uri:null}
+    ]},
+  { id:'ctrl', short:['Matched','Controls'],
+    label:'Matched Control Plots',
+    def:'k-NN selected counterfactual comparison group for each project plot - the farms representing business-as-usual.',
+    mappings:[
+      {std:'VM0047',   term:'Matched Control Plots',  match:'exact', uri:'vm0047#MatchedControlPlots'},
+      {std:'OFP',      term:'Reference Plots',         match:'close', uri:'ofp#ReferencePlots'},
+      {std:'Gold Std', term:'Baseline Scenario Plots', match:'close', uri:'gs#BaselineScenarioPlots'}
+    ]}
+];
+
+var STD_NODES = [
+  {id:'VM0047',   label:'VM0047',       x:130, y:448, fc:'#1565c0', bc:'#e3f2fd'},
+  {id:'OFP',      label:'OFP',           x:360, y:488, fc:'#2e7d32', bc:'#e8f5e9'},
+  {id:'Gold Std', label:'Gold Standard', x:590, y:448, fc:'#e65100', bc:'#fff3e0'}
+];
+
+var MCOL = {exact:'#2e7d32', close:'#ef6c00', none:'#9e9e9e'};
+var CX=360, CY=210, R=150, CR=44;
+var filter='all', selected=null;
+var tx=0, ty=0, sc=1, drag=null, wasDragging=false;
+
+var NS='http://www.w3.org/2000/svg';
+var svg=document.getElementById('vmap');
+
+function mkEl(tag,a){
+  a=a||{};
+  var e=document.createElementNS(NS,tag);
+  for(var k in a) e.setAttribute(k,a[k]);
+  return e;
+}
+
+function mkDefs(){
+  var d=mkEl('defs');
+  ['exact','close','none'].forEach(function(m){
+    var mk=mkEl('marker',{id:'arr-'+m,viewBox:'0 0 10 10',
+      refX:'8',refY:'5',markerWidth:'5',markerHeight:'5',orient:'auto-start-reverse'});
+    var p=mkEl('path',{d:'M2 2L8 5L2 8',fill:'none',
+      stroke:MCOL[m],'stroke-width':'1.5','stroke-linecap':'round','stroke-linejoin':'round'});
+    mk.appendChild(p); d.appendChild(mk);
+  });
+  return d;
+}
+
+function getTransformG(){
+  return svg.querySelector('g#root');
+}
+
+function applyTransform(){
+  var g=getTransformG();
+  if(g) g.setAttribute('transform','translate('+tx+','+ty+') scale('+sc+')');
+}
+
+function render(){
+  while(svg.children.length) svg.removeChild(svg.lastChild);
+  svg.appendChild(mkDefs());
+
+  var gAll=mkEl('g',{id:'root',transform:'translate('+tx+','+ty+') scale('+sc+')'});
+  svg.appendChild(gAll);
+
+  var gEdge=mkEl('g'); var gStd=mkEl('g');
+  var gNode=mkEl('g'); gAll.appendChild(gEdge);
+  gAll.appendChild(gStd); gAll.appendChild(gNode);
+
+  var n=CONCEPTS.length;
+  CONCEPTS.forEach(function(c,i){
+    var angle=2*Math.PI*i/n - Math.PI/2;
+    c._x=CX+R*Math.cos(angle);
+    c._y=CY+R*Math.sin(angle);
+  });
+
+  STD_NODES.forEach(function(s){
+    var g=mkEl('g',{cursor:'pointer'});
+    var rect=mkEl('rect',{x:s.x-56,y:s.y-16,width:112,height:32,rx:16,
+      fill:s.bc,stroke:s.fc,'stroke-width':'1.5'});
+    var t=mkEl('text',{x:s.x,y:s.y+1,'text-anchor':'middle',
+      'dominant-baseline':'central','font-size':'12','font-weight':'bold',
+      fill:s.fc,'font-family':'Arial,sans-serif'});
+    t.textContent=s.label;
+    g.appendChild(rect); g.appendChild(t);
+    (function(ss){ g.onclick=function(e){ e.stopPropagation(); showStdDetail(ss); }; })(s);
+    gStd.appendChild(g);
+  });
+
+  CONCEPTS.forEach(function(c){
+    var hasMatch=c.mappings.some(function(m){ return filter==='all'||m.match===filter; });
+    if(!hasMatch && !(selected && selected.id===c.id)) return;
+
+    c.mappings.forEach(function(m){
+      if(filter!=='all' && m.match!==filter) return;
+      var s=null;
+      STD_NODES.forEach(function(n){ if(n.id===m.std) s=n; });
+      if(!s) return;
+      var dx=s.x-c._x, dy=(s.y-16)-c._y;
+      var dist=Math.sqrt(dx*dx+dy*dy);
+      var ux=dx/dist, uy=dy/dist;
+      var x1=c._x+ux*(CR+2), y1=c._y+uy*(CR+2);
+      var x2=s.x-ux*10,      y2=(s.y-16)-uy*10;
+      var mx=(x1+x2)/2+uy*20, my=(y1+y2)/2-ux*20;
+      var isSel=selected && selected.id===c.id;
+      var op=selected?(isSel?1:0.08):(0.3);
+      var sw=isSel?2.2:0.9;
+      var p=mkEl('path',{
+        d:'M'+x1+' '+y1+' Q'+mx+' '+my+' '+x2+' '+y2,
+        fill:'none', stroke:MCOL[m.match], 'stroke-width':sw,
+        opacity:op, 'marker-end':'url(#arr-'+m.match+')',
+        'stroke-dasharray':m.match==='none'?'4 3':'none'
+      });
+      gEdge.appendChild(p);
+    });
+
+    var dominant='none';
+    if(c.mappings.some(function(m){return m.match==='exact';})) dominant='exact';
+    else if(c.mappings.some(function(m){return m.match==='close';})) dominant='close';
+
+    var isSel=selected && selected.id===c.id;
+    var op=(selected && !isSel)?0.3:1;
+
+    var g=mkEl('g',{cursor:'pointer',opacity:op});
+    var circ=mkEl('circle',{cx:c._x, cy:c._y, r:CR,
+      fill:isSel?MCOL[dominant]:'#fff',
+      stroke:MCOL[dominant], 'stroke-width':isSel?2.5:1.5});
+    g.appendChild(circ);
+
+    var lines=c.short;
+    var baseY=c._y-(lines.length-1)*7;
+    lines.forEach(function(line,li){
+      var t=mkEl('text',{x:c._x, y:baseY+li*14,
+        'text-anchor':'middle','dominant-baseline':'central',
+        'font-size':'10.5','font-weight':isSel?'bold':'normal',
+        fill:isSel?'#fff':'#222','font-family':'Arial,sans-serif'});
+      t.textContent=line;
+      g.appendChild(t);
+    });
+
+    (function(cc){ g.onclick=function(e){ e.stopPropagation(); selectConcept(cc); }; })(c);
+    gNode.appendChild(g);
+  });
+
+  var cg=mkEl('g');
+  cg.appendChild(mkEl('circle',{cx:CX,cy:CY,r:54,
+    fill:'#fff',stroke:'#1B3A6B','stroke-width':'2'}));
+  var ct1=mkEl('text',{x:CX,y:CY-7,'text-anchor':'middle',
+    'dominant-baseline':'central','font-size':'13','font-weight':'bold',
+    fill:'#1B3A6B','font-family':'Arial,sans-serif'});
+  ct1.textContent='DPB';
+  var ct2=mkEl('text',{x:CX,y:CY+8,'text-anchor':'middle',
+    'dominant-baseline':'central','font-size':'11',fill:'#555',
+    'font-family':'Arial,sans-serif'});
+  ct2.textContent='vocabulary';
+  cg.appendChild(ct1); cg.appendChild(ct2);
+  gNode.appendChild(cg);
+}
+
+function selectConcept(c){
+  selected=(selected && selected.id===c.id)?null:c;
+  render(); updateDetail();
+}
+
+function showStdDetail(s){
+  var exact=0,close=0,none=0;
+  CONCEPTS.forEach(function(c){
+    c.mappings.forEach(function(m){
+      if(m.std===s.id){
+        if(m.match==='exact') exact++;
+        else if(m.match==='close') close++;
+        else none++;
+      }
+    });
+  });
+  document.getElementById('dp').innerHTML=
+    '<div class="dp-title" style="color:'+s.fc+'">'+s.label+'</div>'+
+    '<div class="dp-def">Coverage across all 10 DPB concepts:</div>'+
+    '<div class="std-pills">'+
+    '<span class="pill pill-exact">&#10003; '+exact+' exact</span>'+
+    '<span class="pill pill-close">~ '+close+' close</span>'+
+    '<span class="pill pill-none">&#10007; '+none+' no equivalent</span>'+
+    '</div>';
+}
+
+function updateDetail(){
+  if(!selected){
+    document.getElementById('dp').innerHTML=
+      '<div class="dp-title">Select a concept node to explore</div>'+
+      '<div class="dp-def">Click any circle to see its definition and cross-standard mappings.</div>';
+    return;
+  }
+  var c=selected;
+  var pills=c.mappings.map(function(m){
+    var cls='pill pill-'+m.match;
+    var icon=m.match==='exact'?'&#10003;':m.match==='close'?'~':'&#10007;';
+    var uri=m.uri?'<span style="font-size:10px;color:#999;display:block;font-family:monospace">'+m.uri+'</span>':'';
+    return '<span class="'+cls+'">'+icon+' <b>'+m.std+'</b><br>'+m.term+uri+'</span>';
+  }).join('');
+  document.getElementById('dp').innerHTML=
+    '<div class="dp-title">'+c.label+'</div>'+
+    '<div class="dp-def">'+c.def+'</div>'+
+    '<div class="std-pills">'+pills+'</div>';
+}
+
+function setFilter(f){
+  filter=f; selected=null;
+  document.querySelectorAll('.controls button').forEach(function(b){
+    b.classList.remove('active');
+  });
+  document.getElementById('btn-'+f).classList.add('active');
+  render(); updateDetail();
+}
+
+svg.addEventListener('click',function(){
+  selected=null; render(); updateDetail();
+});
+
+svg.addEventListener('mousedown',function(e){
+  wasDragging=false;
+  drag={sx:e.clientX-tx, sy:e.clientY-ty};
+  svg.style.cursor='grabbing'; e.preventDefault();
+});
+
+svg.addEventListener('mousemove',function(e){
+  if(!drag) return;
+  wasDragging=true;
+  tx=e.clientX-drag.sx; ty=e.clientY-drag.sy;
+  applyTransform();
+});
+
+svg.addEventListener('mouseup',function(){
+  drag=null; svg.style.cursor='default';
+  setTimeout(function(){wasDragging=false;},50);
+});
+
+svg.addEventListener('mouseleave',function(){
+  drag=null; svg.style.cursor='default';
+});
+
+svg.addEventListener('wheel',function(e){
+  e.preventDefault();
+  var d=e.deltaY>0?0.92:1.09;
+  var rect=svg.getBoundingClientRect();
+  var mx=(e.clientX-rect.left)*(720/rect.width);
+  var my=(e.clientY-rect.top)*(520/rect.height);
+  tx=mx-d*(mx-tx); ty=my-d*(my-ty);
+  sc=Math.min(Math.max(sc*d,0.4),3.5);
+  applyTransform();
+},{passive:false});
+
+render();
+</script>
+</body>
+</html>
