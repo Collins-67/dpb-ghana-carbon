@@ -102,8 +102,9 @@ section = st.sidebar.radio("Go to section", [
     "3. Performance Benchmark",
     "4. Per-farm PB map",
     "5. Uncertainty",
-    "6. Vocabulary map",
-    "7. VM0047 summary",
+    "6. Input data uncertainty",       
+    "7. Vocabulary map (OWL)",          
+    "8. VM0047 summary",                
 ])
 
 
@@ -918,62 +919,354 @@ elif section == "5. Uncertainty":
       uncertainty and enable individual crediting.
     """)
 
-
 # ══════════════════════════════════════════════════════════════════════════
-# SECTION 6 — Vocabulary map
+# SECTION 6 — Input Data Uncertainty and Error Propagation
 # ══════════════════════════════════════════════════════════════════════════
-elif section == "6. Vocabulary map":
-    st.header("Cross-Standard Vocabulary Map")
+elif section == "6. Input data uncertainty":
+    st.header("Input Data Uncertainty — Sensor Error Propagation")
     st.markdown("""
-    Interactive map showing how DPB concepts connect across
-    **VM0047**, **Open Forest Protocol**, and **Gold Standard**.
-    Click any concept node to see its definition and cross-standard URIs.
-    Filter by match type using the buttons above the map.
+    Following the **RAMANI FlowCell framework** (*Calculations with
+    Uncertainties*, 2024), each input variable is represented as a
+    nominal value ± standard deviation. The DPB pipeline is re-run
+    300 times with NDFI values perturbed within their sensor uncertainty
+    bounds.
+
+    **Uncertainty source:** Landsat 8 OLI radiometric calibration  
+    **Input error:** ±2–3% surface reflectance → **±0.004 NDFI units**  
+    **Propagation:** PB perturbation σ = NDFI_σ × √2 = ±0.00566 NDFI
+    *(factor of √2 because PB = project NDFI − control NDFI —
+    both measurements carry independent sensor uncertainty)*
+    """)
+
+    st.divider()
+
+    # ── Real results from Section 11.1 ────────────────────────────────────
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Nominal PB",        "+0.00571 NDFI")
+    col2.metric("Propagated PB",     "+0.00570 NDFI")
+    col3.metric("Propagated 90% CI", "[+0.00555, +0.00586]")
+    col4.metric("Noise reduction",   "59.9×")
+
+    st.success(
+        "✅ Additionality confirmed under sensor uncertainty — "
+        "propagated CI entirely above zero"
+    )
+    st.divider()
+
+    # ── Error propagation explanation ──────────────────────────────────────
+    st.subheader("How sensor error propagates through the DPB")
+    st.markdown("""
+    The NDFI formula is:
+NDFI = (NIR − SWIR1) / (NIR + SWIR1)
+    Partial derivatives give the sensitivity to reflectance errors:
+
+∂NDFI/∂NIR   = +2·SWIR1 / (NIR+SWIR1)²  =  3.70
+∂NDFI/∂SWIR1 = −2·NIR   / (NIR+SWIR1)²  =  7.41
+
+σ_NDFI = √[(3.70×0.003)² + (7.41×0.003)²] ≈ 0.0025
+Conservative estimate used: ±0.004 NDFI (Tier 1 upper bound)
+    Because PB = project NDFI − control NDFI:
+σ_PB = σ_NDFI × √2 = 0.004 × 1.414 = 0.00566 NDFI per farm
+    Averaging across **3,672 farms** reduces output uncertainty by 59.9×:
+σ_overall = σ_PB / √n = 0.00566 / √3672 = 0.00009 NDFI
+
+This is the **Central Limit Theorem** in action — random sensor
+    errors cancel out across independent farm measurements.
+    """)
+
+    st.divider()
+
+    # ── Tables ─────────────────────────────────────────────────────────────
+    st.subheader("Error propagation results")
+
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.markdown("**Overall level**")
+        df_ep = pd.DataFrame({
+            'Parameter': [
+                'NDFI sensor sigma (input)',
+                'PB perturbation sigma',
+                'Nominal overall PB',
+                'Propagated mean PB',
+                'Propagated output sigma',
+                'Propagated 90% CI lower',
+                'Propagated 90% CI upper',
+                'Additionality confirmed',
+                'Noise reduction ratio',
+            ],
+            'Value': [
+                '±0.0040 NDFI',
+                '±0.00566 NDFI',
+                '+0.00571 NDFI',
+                '+0.00570 NDFI',
+                '±0.00009 NDFI',
+                '+0.00555 NDFI',
+                '+0.00586 NDFI',
+                'YES',
+                '59.9×',
+            ]
+        })
+        st.dataframe(df_ep, use_container_width=True, hide_index=True)
+
+    with col_b:
+        st.markdown("**Per-farm uncertainty classification**")
+        df_farm = pd.DataFrame({
+            'Category': [
+                'Stable positive — CI entirely above 0',
+                'Stable negative — CI entirely below 0',
+                'Uncertain — CI spans 0',
+                'Total',
+            ],
+            'n farms': ['1,720', '1,403', '549', '3,672'],
+            '%':       ['46%',   '38%',   '14%', '100%'],
+        })
+        st.dataframe(df_farm, use_container_width=True, hide_index=True)
+
+        st.markdown("""
+        **Interpretation:**
+        - **46% stable positive** — additionality confirmed at farm level
+          even under sensor perturbation
+        - **38% stable negative** — consistently below counterfactual;
+          candidates for investigation
+        - **14% uncertain** — sensor noise is large enough relative to
+          PB magnitude to change the sign; need field verification
+        """)
+
+    st.divider()
+
+    # ── Comparison with bootstrap CI ───────────────────────────────────────
+    st.subheader(
+        "Comparison: error propagation CI vs bootstrap CI (Section 5)")
+
+    df_comp = pd.DataFrame({
+        'Aspect': [
+            'Question answered',
+            'Source of uncertainty',
+            'What varies between runs',
+            'Overall CI width',
+            'Per-farm mean CI width',
+            'Additionality verdict',
+        ],
+        'Bootstrap CI (Section 5)': [
+            'Would a different sample give the same result?',
+            'Statistical — finite sample of farms',
+            'Which farms are included (resampled)',
+            '±0.00213 NDFI',
+            '0.0321 NDFI',
+            'CONFIRMED',
+        ],
+        'Error propagation CI (Section 6)': [
+            'Would a more accurate sensor give same result?',
+            'Physical — Landsat 8 sensor calibration',
+            'NDFI value at each farm (perturbed)',
+            '±0.00016 NDFI',
+            '0.0184 NDFI',
+            'CONFIRMED',
+        ],
+    })
+    st.dataframe(df_comp, use_container_width=True, hide_index=True)
+
+    st.info("""
+    **Key insight:** The error propagation CI is much narrower than the
+    bootstrap CI because sensor noise is random and independent across
+    farms — it averages out rapidly. The dominant uncertainty source is
+    **genuine landscape heterogeneity** (captured by bootstrap), not
+    sensor error. This means investing in more monitoring years reduces
+    uncertainty more efficiently than seeking a higher-accuracy sensor.
+    """)
+
+    st.divider()
+
+    # ── Spatial uncertainty map ────────────────────────────────────────────
+    st.subheader("Spatial uncertainty map")
+    st.markdown("""
+    The interactive map below shows each project farm coloured by its
+    uncertainty category under sensor error propagation.
+    **Circle size is proportional to per-farm CI width** — larger
+    circles are more uncertain.
     """)
 
     try:
-        with open('vocabulary_map.html', 'r', encoding='utf-8') as f:
-            vocab_html = f.read()
-        st.components.v1.html(vocab_html, height=750, scrolling=False)
+        with open('uncertainty_interactive.html',
+                  'r', encoding='utf-8') as f:
+            unc_html = f.read()
+        st.components.v1.html(unc_html, height=600, scrolling=False)
     except FileNotFoundError:
         st.warning(
-            "vocabulary_map.html not found. "
-            "Upload this file to GitHub alongside app.py."
+            "uncertainty_interactive.html not found. "
+            "Upload this file to your GitHub repository root."
+        )
+        st.markdown("""
+        **To generate this file**, run Section 11.1b in your notebook.
+        It saves `uncertainty_interactive.html` to your working directory.
+        """)
+
+# ══════════════════════════════════════════════════════════════════════════
+# SECTION 7 — Vocabulary map
+# ══════════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════
+# SECTION 7 — Vocabulary map (OWL relations)
+# ══════════════════════════════════════════════════════════════════════════
+elif section == "7. Vocabulary map (OWL)":
+    st.header("Cross-Standard Vocabulary Map — SemFlow OWL Relations")
+    st.markdown("""
+    Interactive map showing how DPB concepts connect across
+    **VM0047**, **Open Forest Protocol**, and **Gold Standard**
+    using **OWL relation types** compatible with RAMANI's SemFlow
+    Book of Knowledge platform.
+
+    Click any concept node to see its OWL relation type and
+    cross-standard mapping. Use the filter buttons to isolate
+    specific relation types.
+    """)
+
+    # ── OWL relation explanation ───────────────────────────────────────────
+    st.subheader("OWL relation types used")
+    df_rel = pd.DataFrame({
+        'Relation': [
+            'owl:sameAs',
+            'owl:equivalentClass',
+            'rdfs:subClassOf',
+            'owl:ObjectProperty',
+            'No relation',
+        ],
+        'Colour': ['🟢', '🔵', '🟠', '🟣', '⚫'],
+        'Meaning': [
+            'Two URIs refer to exactly the same thing — '
+            'identical in every way',
+            'Two classes have exactly the same members — '
+            'structurally interchangeable',
+            'One concept is a specific type of a broader concept — '
+            'directional',
+            'A relationship or property of something, not a class '
+            'of objects',
+            'Genuine gap — concept exists in one standard only',
+        ],
+        'Example': [
+            '90% CI is owl:sameAs across all three standards',
+            'Donor Pool owl:equivalentClass Reference Area Pool (OFP)',
+            'NDFI rdfs:subClassOf Vegetation Index (OFP)',
+            'Additionality is a property a project has or does not have',
+            'Dynamic Baseline has no equivalent in OFP or Gold Standard',
+        ],
+    })
+    st.dataframe(df_rel, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # ── Relation count summary ─────────────────────────────────────────────
+    st.subheader("Relation type distribution — 10 concepts × 3 standards")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("owl:sameAs",          "9",  "30% — fully identical")
+    col2.metric("owl:equivalentClass", "12", "40% — structurally same")
+    col3.metric("rdfs:subClassOf",     "7",  "23% — specific type of")
+    col4.metric("owl:ObjectProperty",  "3",  "10% — property type")
+    col5.metric("No relation",         "2",  "7% — genuine gap")
+
+    st.divider()
+
+    # ── Interactive vocabulary map ────────────────────────────────────────
+    try:
+        with open('vocabulary_map_owl.html',
+                  'r', encoding='utf-8') as f:
+            owl_html = f.read()
+        st.components.v1.html(owl_html, height=780, scrolling=False)
+    except FileNotFoundError:
+        st.warning(
+            "vocabulary_map_owl.html not found. "
+            "Upload this file to your GitHub repository root."
         )
 
     st.divider()
-    st.subheader("Match type summary across all 10 concepts")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Exact matches",  "13",
-              "same concept, same measurement")
-    c2.metric("Close matches",  "14",
-              "same idea, different operationalisation")
-    c3.metric("No equivalent",   "3",
-              "VM0047-specific concepts only")
 
+    # ── Full mapping table ─────────────────────────────────────────────────
+    st.subheader("Complete OWL mapping table")
+    df_owl = pd.DataFrame({
+        'DPB concept': [
+            'Performance Benchmark (PB)',
+            'Stocking Index (NDFI)',
+            'Donor Pool',
+            'Matched Controls',
+            'Categorical Filter',
+            'k-NN Matching',
+            '90% Confidence Interval',
+            'Additionality',
+            'Balance Check',
+            'Dynamic Baseline',
+        ],
+        'VM0047': [
+            'owl:equivalentClass',
+            'owl:equivalentClass',
+            'owl:sameAs',
+            'owl:sameAs',
+            'owl:sameAs',
+            'owl:equivalentClass',
+            'owl:sameAs',
+            'owl:ObjectProperty',
+            'owl:equivalentClass',
+            'owl:equivalentClass',
+        ],
+        'OFP': [
+            'rdfs:subClassOf',
+            'rdfs:subClassOf',
+            'owl:equivalentClass',
+            'owl:equivalentClass',
+            'owl:equivalentClass',
+            'rdfs:subClassOf',
+            'owl:sameAs',
+            'owl:ObjectProperty',
+            'rdfs:subClassOf',
+            'no relation',
+        ],
+        'Gold Standard': [
+            'rdfs:subClassOf',
+            'rdfs:subClassOf',
+            'owl:equivalentClass',
+            'owl:equivalentClass',
+            'owl:equivalentClass',
+            'rdfs:subClassOf',
+            'owl:sameAs',
+            'owl:ObjectProperty',
+            'rdfs:subClassOf',
+            'no relation',
+        ],
+    })
+    st.dataframe(df_owl, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # ── SemFlow upload instructions ────────────────────────────────────────
+    st.subheader("SemFlow BoK upload")
     st.markdown("""
-    | Match type | Meaning | Example |
-    |---|---|---|
-    | ✅ Exact | Same concept, same measurement across all standards | 90% Confidence Interval |
-    | 〜 Close | Same underlying idea, different operationalisation | Additionality (DPB vs counterfactual rate vs CDM tool) |
-    | ✗ None | Concept exists in one standard only | Dynamic Baseline — VM0047 specific |
-    """)
+    The file `carbon_standards_skos_owl.ttl` contains the complete
+    vocabulary in Turtle format, ready for upload to RAMANI's SemFlow
+    platform.
 
-    st.info("""
-    **Linking to SemFlow / Living Textbook:**
-    The SKOS vocabulary file (`carbon_standards_skos.ttl`) can be uploaded
-    to RAMANI's SemFlow platform. Once uploaded, every URI in this map
-    becomes a live, resolvable web address. The SemLinked browser extension
-    then highlights these concepts on any webpage — turning any online
-    article or report into interactive learning material connected to
-    this vocabulary.
+    **Upload steps:**
+    1. Log into SemFlow and enable **Edit Mode** (top-right toggle)
+    2. Go to **Concept menu → Create New →
+       Based on Existing RDF/OWL Document**
+    3. Upload `carbon_standards_skos_owl.ttl`
+    4. Set Base IRI: `https://ramani.bv/bok/concepts/`
+    5. Toggle AI Summary **OFF** (file is already structured RDF)
+    6. Click **Create** — SemFlow generates the concept canvas
+    7. Use the HITL review to verify and adjust concept bubbles
+    8. Connect nodes using the SemFlow OWL relation types:
+       `owl:sameAs` · `owl:equivalentClass` ·
+       `rdfs:subClassOf` · `owl:ObjectProperty`
+
+    Once uploaded, every URI in `dpb_semantic_outputs_owl.jsonld`
+    becomes a live, resolvable address. The **SemLinked** browser
+    extension then enables in-context definition lookup on any
+    webpage containing DPB-related terminology.
     """)
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# SECTION 7 — VM0047 summary
+# SECTION 8 — VM0047 summary
 # ══════════════════════════════════════════════════════════════════════════
-elif section == "7. VM0047 summary":
+elif section == "8. VM0047 summary":
     st.header("VM0047 Monitoring Summary")
     st.markdown(
         "**Official 7-year assessment — Ghana ARR Project (2017–2023)**")
