@@ -1,0 +1,140 @@
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ram:    <https://ramani.bv/bok/concepts/> .
+@prefix vm0047: <https://verra.org/methodology/vm0047#> .
+@prefix ofp:    <https://openforestprotocol.org/vocab#> .
+@prefix gs:     <https://goldstandard.org/vocab#> .
+@prefix dcterms:<http://purl.org/dc/terms/> .
+
+ram:DPBConceptScheme
+    a skos:ConceptScheme ;
+    dcterms:title "DPB Carbon Standards Vocabulary (SemFlow OWL Edition)" ;
+    dcterms:creator "Collins Edem Hlordzie" ;
+    dcterms:date "2026-06-23" .
+
+ram:performance_benchmark
+    a skos:Concept , owl:Class ;
+    skos:inScheme ram:DPBConceptScheme ;
+    skos:prefLabel "Performance Benchmark (PB)"@en ;
+    skos:notation "PB" ;
+    skos:definition "Difference in NDFI between project plots and k-NN matched control plots. PB > 0 with 90% CI above zero confirms additionality."@en ;
+    owl:equivalentClass <https://verra.org/methodology/vm0047#PerformanceBenchmark> ;
+    skos:scopeNote "Same formula, same units, same purpose"@en ;
+    rdfs:subClassOf <https://openforestprotocol.org/vocab#ProjectVsBaselinePerformance> ;
+    skos:scopeNote "PB is a specific type of project-vs-baseline comparison"@en ;
+    rdfs:subClassOf <https://goldstandard.org/vocab#AdditionalityIndicator> ;
+    skos:scopeNote "PB is a specific type of additionality indicator"@en .
+
+ram:stocking_index
+    a skos:Concept , owl:Class ;
+    skos:inScheme ram:DPBConceptScheme ;
+    skos:prefLabel "Stocking Index — NDFI"@en ;
+    skos:notation "NDFI" ;
+    skos:definition "NDFI = (NIR-SWIR1)/(NIR+SWIR1). Spectral proxy for woody vegetation density from Landsat 8. Preferred over NDVI — less saturation at high biomass."@en ;
+    owl:equivalentClass <https://verra.org/methodology/vm0047#StockingIndex> ;
+    skos:scopeNote "NDFI is the specified stocking index in VM0047"@en ;
+    rdfs:subClassOf <https://openforestprotocol.org/vocab#VegetationIndex> ;
+    skos:scopeNote "NDFI is a specific type of vegetation index"@en ;
+    rdfs:subClassOf <https://goldstandard.org/vocab#VegetationCoverProxy> ;
+    skos:scopeNote "NDFI is a specific type of cover proxy"@en .
+
+ram:donor_pool
+    a skos:Concept , owl:NamedIndividual ;
+    skos:inScheme ram:DPBConceptScheme ;
+    skos:prefLabel "Donor Pool"@en ;
+    skos:notation "DP" ;
+    skos:definition "Full set of candidate control plots from unmanaged surrounding landscape before categorical filtering. Represents the business-as-usual counterfactual."@en ;
+    owl:sameAs <https://verra.org/methodology/vm0047#DonorPool> ;
+    skos:scopeNote "Identical in every way — same term, same definition, same function"@en ;
+    owl:equivalentClass <https://openforestprotocol.org/vocab#ReferenceAreaPool> ;
+    skos:scopeNote "Same set of candidate counterfactual plots — different name only"@en ;
+    owl:equivalentClass <https://goldstandard.org/vocab#BaselineReferencePool> ;
+    skos:scopeNote "Same function — different name"@en .
+
+ram:matched_controls
+    a skos:Concept , owl:NamedIndividual ;
+    skos:inScheme ram:DPBConceptScheme ;
+    skos:prefLabel "Matched Control Plots"@en ;
+    skos:notation "MC" ;
+    skos:definition "Subset of donor pool selected via k-NN matching as the counterfactual comparison group for each project farm."@en ;
+    owl:sameAs <https://verra.org/methodology/vm0047#MatchedControlPlots> ;
+    skos:scopeNote "Identical — same term, same selection process"@en ;
+    owl:equivalentClass <https://openforestprotocol.org/vocab#ReferencePlots> ;
+    skos:scopeNote "Same selected comparison set — different name"@en ;
+    owl:equivalentClass <https://goldstandard.org/vocab#BaselineScenarioPlots> ;
+    skos:scopeNote "Same function — different name"@en .
+
+ram:categorical_filter
+    a skos:Concept , owl:NamedIndividual ;
+    skos:inScheme ram:DPBConceptScheme ;
+    skos:prefLabel "Categorical Covariate Filter"@en ;
+    skos:notation "CF" ;
+    skos:definition "Pre-matching filter restricting the donor pool to farms sharing the same region and land tenure as each project farm."@en ;
+    owl:sameAs <https://verra.org/methodology/vm0047#CategoricalVariables> ;
+    skos:scopeNote "Identical requirement — same eligibility filter"@en ;
+    owl:equivalentClass <https://openforestprotocol.org/vocab#StratificationVariables> ;
+    skos:scopeNote "Same pre-filtering function — different name"@en ;
+    owl:equivalentClass <https://goldstandard.org/vocab#BaselineStratification> ;
+    skos:scopeNote "Same function — different name"@en .
+
+ram:knn_matching
+    a skos:Concept , owl:Class ;
+    skos:inScheme ram:DPBConceptScheme ;
+    skos:prefLabel "k-NN Matching (k=3)"@en ;
+    skos:notation "kNN" ;
+    skos:definition "k=3 nearest neighbours on location (lon, lat). NDFI excluded from matching to preserve the additionality signal."@en ;
+    owl:equivalentClass <https://verra.org/methodology/vm0047#MultivariateMatching> ;
+    skos:scopeNote "k-NN is the VM0047-specified matching method"@en ;
+    rdfs:subClassOf <https://openforestprotocol.org/vocab#PlotMatching> ;
+    skos:scopeNote "k-NN matching is a specific type of plot matching"@en ;
+    rdfs:subClassOf <https://goldstandard.org/vocab#ComparativeSiteAnalysis> ;
+    skos:scopeNote "k-NN matching is a specific type of site comparison method"@en .
+
+ram:confidence_interval
+    a skos:Concept , owl:NamedIndividual ;
+    skos:inScheme ram:DPBConceptScheme ;
+    skos:prefLabel "90% Confidence Interval"@en ;
+    skos:notation "CI" ;
+    skos:definition "Bootstrap 90% CI on PB values (n=500 resamples). CI lower bound above zero confirms additionality at VM0047 Tier 2."@en ;
+    owl:sameAs <https://verra.org/methodology/vm0047#ConfidenceInterval> ;
+    skos:scopeNote "Identical statistical requirement"@en ;
+    owl:sameAs <https://openforestprotocol.org/vocab#ConfidenceInterval> ;
+    skos:scopeNote "Identical statistical requirement"@en ;
+    owl:sameAs <https://goldstandard.org/vocab#ConfidenceInterval> ;
+    skos:scopeNote "Identical statistical requirement"@en .
+
+ram:additionality
+    a skos:Concept , owl:ObjectProperty ;
+    skos:inScheme ram:DPBConceptScheme ;
+    skos:prefLabel "Additionality"@en ;
+    skos:notation "ADD" ;
+    skos:definition "A property that a project either has or does not have. Confirmed when PB > 0 and the 90% CI is entirely above zero. Mechanism differs across standards."@en ;
+    owl:equivalentProperty <https://verra.org/methodology/vm0047#Additionality> ;
+    skos:scopeNote "A property of the project — confirmed via DPB"@en ;
+    owl:equivalentProperty <https://openforestprotocol.org/vocab#Additionality> ;
+    skos:scopeNote "Same property type — different mechanism"@en ;
+    owl:equivalentProperty <https://goldstandard.org/vocab#Additionality> ;
+    skos:scopeNote "Same property type — different mechanism"@en .
+
+ram:balance_check
+    a skos:Concept , owl:Class ;
+    skos:inScheme ram:DPBConceptScheme ;
+    skos:prefLabel "Balance Check"@en ;
+    skos:notation "BC" ;
+    skos:definition "Post-matching diagnostic: standardised difference of means must be below 0.25. Confirms project and control groups are statistically comparable."@en ;
+    owl:equivalentClass <https://verra.org/methodology/vm0047#StandardisedDifference> ;
+    skos:scopeNote "Same test, same threshold"@en ;
+    rdfs:subClassOf <https://openforestprotocol.org/vocab#CovariateBalance> ;
+    skos:scopeNote "Balance check is a specific type of covariate balance assessment"@en ;
+    rdfs:subClassOf <https://goldstandard.org/vocab#BaselineComparability> ;
+    skos:scopeNote "Balance check is a specific implementation"@en .
+
+ram:dynamic_baseline
+    a skos:Concept , owl:Class ;
+    skos:inScheme ram:DPBConceptScheme ;
+    skos:prefLabel "Dynamic Baseline"@en ;
+    skos:notation "DB" ;
+    skos:definition "Annually updated baseline from current satellite observations of unprotected land. VM0047-specific — OFP and Gold Standard use static baselines."@en ;
+    owl:equivalentClass <https://verra.org/methodology/vm0047#DynamicBaseline> ;
+    skos:scopeNote "VM0047-specific concept — exact match"@en .

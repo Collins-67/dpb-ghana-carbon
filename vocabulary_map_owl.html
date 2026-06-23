@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body{font-family:Arial,sans-serif;background:#fff;
+       color:#222;margin:0;padding:16px;}
+  h2{font-size:15px;color:#1B3A6B;margin-bottom:4px;}
+  .sub{font-size:12px;color:#666;margin-bottom:14px;}
+  .ctrl{display:flex;gap:8px;flex-wrap:wrap;
+        margin-bottom:12px;align-items:center;}
+  .ctrl button{font-size:12px;padding:4px 14px;
+    border-radius:20px;cursor:pointer;border:1px solid #ccc;
+    background:#f5f5f5;color:#555;transition:all .15s;}
+  .ctrl button.active{color:#fff;font-weight:bold;}
+  .leg-row{display:flex;gap:16px;flex-wrap:wrap;
+    margin-bottom:10px;font-size:12px;
+    color:#555;align-items:center;}
+  .leg{display:flex;align-items:center;gap:5px;}
+  .leg-dot{width:12px;height:12px;border-radius:50%;}
+  #vmap{display:block;border:1px solid #e8e8e8;
+        border-radius:10px;background:#fafafa;cursor:default;}
+  .dp{background:#f7f9fc;border-radius:8px;
+      border:1px solid #e0e8f0;padding:14px 16px;
+      margin-top:12px;font-size:13px;min-height:90px;}
+  .dp-title{font-weight:bold;font-size:14px;
+            color:#1B3A6B;margin-bottom:4px;}
+  .dp-note{font-size:11px;color:#888;
+            font-family:monospace;margin-bottom:8px;}
+  .dp-def{color:#555;margin-bottom:10px;line-height:1.55;}
+  .pills{display:flex;gap:7px;flex-wrap:wrap;}
+  .pill{border-radius:20px;padding:4px 10px;font-size:11px;
+        font-weight:bold;border:1px solid;
+        display:inline-block;margin-bottom:4px;}
+  .p-same  {background:#e8f5e9;color:#1b5e20;border-color:#388e3c;}
+  .p-equiv {background:#e3f2fd;color:#0d47a1;border-color:#1565c0;}
+  .p-sub   {background:#fff8e1;color:#e65100;border-color:#f57c00;}
+  .p-obj   {background:#f3e5f5;color:#4a148c;border-color:#7b1fa2;}
+  .p-none  {background:#f5f5f5;color:#757575;border-color:#bdbdbd;}
+  .hint{font-size:11px;color:#aaa;text-align:center;margin-top:5px;}
+</style>
+</head>
+<body>
+
+<h2>DPB Vocabulary Map — SemFlow OWL Relations</h2>
+<p class="sub">
+  10 concepts &middot; 3 standards &middot;
+  owl:sameAs | owl:equivalentClass |
+  rdfs:subClassOf | owl:ObjectProperty
+</p>
+
+<div class="ctrl">
+  <span style="font-size:12px;color:#888;font-weight:bold">Filter:</span>
+  <button id="btn-all" class="active"
+    style="background:#1B3A6B"
+    onclick="setFilter('all')">All</button>
+  <button id="btn-same"
+    style="background:#2e7d32;color:#fff"
+    onclick="setFilter('same')">owl:sameAs</button>
+  <button id="btn-equiv"
+    style="background:#1565c0;color:#fff"
+    onclick="setFilter('equiv')">owl:equivalentClass</button>
+  <button id="btn-sub"
+    style="background:#ef6c00;color:#fff"
+    onclick="setFilter('sub')">rdfs:subClassOf</button>
+  <button id="btn-obj"
+    style="background:#7b1fa2;color:#fff"
+    onclick="setFilter('obj')">owl:ObjectProperty</button>
+  <button id="btn-none"
+    style="background:#9e9e9e;color:#fff"
+    onclick="setFilter('none')">No relation</button>
+</div>
+
+<div class="leg-row">
+  <div class="leg">
+    <div class="leg-dot" style="background:#2e7d32"></div>
+    owl:sameAs
+  </div>
+  <div class="leg">
+    <div class="leg-dot" style="background:#1565c0"></div>
+    owl:equivalentClass
+  </div>
+  <div class="leg">
+    <div class="leg-dot" style="background:#ef6c00"></div>
+    rdfs:subClassOf
+  </div>
+  <div class="leg">
+    <div class="leg-dot" style="background:#7b1fa2"></div>
+    owl:ObjectProperty
+  </div>
+  <div class="leg">
+    <div class="leg-dot" style="background:#9e9e9e"></div>
+    No relation
+  </div>
+</div>
+
+<svg id="vmap" width="100%" viewBox="0 0 720 520"></svg>
+<p class="hint">
+  Click a concept to explore its OWL relations &middot;
+  Drag to pan &middot; Scroll to zoom
+</p>
+<div class="dp" id="dp">
+  <div class="dp-title">Select a concept node</div>
+  <div class="dp-def">
+    Click any circle to see its OWL relation types
+    to VM0047, OFP, and Gold Standard.
+  </div>
+</div>
+
+<script>
+var C=[
+  {id:'pb',s:['Performance','Benchmark'],n:'PB',
+   lbl:'Performance Benchmark (PB)',
+   def:'Difference in NDFI between project plots and k-NN matched '+
+       'controls. PB > 0 with CI above zero confirms additionality.',
+   m:[{std:'VM0047',t:'Performance Benchmark',
+       r:'owl:equivalentClass',
+       note:'Same formula, same units, same purpose'},
+      {std:'OFP',t:'Project vs Baseline Performance',
+       r:'rdfs:subClassOf',
+       note:'PB is a specific type of project-vs-baseline comparison'},
+      {std:'Gold Std',t:'Additionality Performance Indicator',
+       r:'rdfs:subClassOf',
+       note:'PB is a specific type of additionality indicator'}]},
+  {id:'ndfi',s:['Stocking','Index (NDFI)'],n:'NDFI',
+   lbl:'Stocking Index — NDFI',
+   def:'NDFI=(NIR-SWIR1)/(NIR+SWIR1). Spectral proxy for woody '+
+       'vegetation density. Less saturation than NDVI at high biomass.',
+   m:[{std:'VM0047',t:'Stocking Index',
+       r:'owl:equivalentClass',
+       note:'NDFI is the VM0047-specified stocking index'},
+      {std:'OFP',t:'Vegetation Index',
+       r:'rdfs:subClassOf',
+       note:'NDFI is a specific type of vegetation index'},
+      {std:'Gold Std',t:'Vegetation Cover Proxy',
+       r:'rdfs:subClassOf',
+       note:'NDFI is a specific type of cover proxy'}]},
+  {id:'donor',s:['Donor','Pool'],n:'DP',
+   lbl:'Donor Pool',
+   def:'Full set of candidate control plots from unmanaged surrounding '+
+       'landscape before categorical filtering.',
+   m:[{std:'VM0047',t:'Donor Pool',
+       r:'owl:sameAs',
+       note:'Identical — same term, same definition, same function'},
+      {std:'OFP',t:'Reference Area Pool',
+       r:'owl:equivalentClass',
+       note:'Same set of candidate plots — different name only'},
+      {std:'Gold Std',t:'Baseline Reference Pool',
+       r:'owl:equivalentClass',
+       note:'Same function — different name'}]},
+  {id:'ctrl',s:['Matched','Controls'],n:'MC',
+   lbl:'Matched Control Plots',
+   def:'k-NN selected counterfactual comparison group for each '+
+       'project farm.',
+   m:[{std:'VM0047',t:'Matched Control Plots',
+       r:'owl:sameAs',
+       note:'Identical — same term, same selection process'},
+      {std:'OFP',t:'Reference Plots',
+       r:'owl:equivalentClass',
+       note:'Same selected comparison set — different name'},
+      {std:'Gold Std',t:'Baseline Scenario Plots',
+       r:'owl:equivalentClass',
+       note:'Same function — different name'}]},
+  {id:'cat',s:['Categorical','Filter'],n:'CF',
+   lbl:'Categorical Covariate Filter',
+   def:'Pre-matching filter: donor pool restricted to farms sharing '+
+       'the same region and land tenure as project farms.',
+   m:[{std:'VM0047',t:'Categorical Variables',
+       r:'owl:sameAs',
+       note:'Identical requirement — same eligibility filter'},
+      {std:'OFP',t:'Stratification Variables',
+       r:'owl:equivalentClass',
+       note:'Same pre-filtering function — different name'},
+      {std:'Gold Std',t:'Baseline Stratification Criteria',
+       r:'owl:equivalentClass',
+       note:'Same function — different name'}]},
+  {id:'knn',s:['k-NN','Matching'],n:'kNN',
+   lbl:'k-NN Matching (k=3)',
+   def:'k=3 nearest neighbours on location. NDFI excluded from '+
+       'matching variables to preserve additionality signal.',
+   m:[{std:'VM0047',t:'Multivariate Matching',
+       r:'owl:equivalentClass',
+       note:'k-NN is the VM0047-specified matching method'},
+      {std:'OFP',t:'Plot Matching',
+       r:'rdfs:subClassOf',
+       note:'k-NN is a specific type of plot matching'},
+      {std:'Gold Std',t:'Comparative Site Analysis',
+       r:'rdfs:subClassOf',
+       note:'k-NN is a specific type of site comparison'}]},
+  {id:'ci',s:['90%','Conf. Interval'],n:'CI',
+   lbl:'90% Confidence Interval',
+   def:'Bootstrap 90% CI (n=500). CI lower bound above zero '+
+       'confirms additionality at VM0047 Tier 2.',
+   m:[{std:'VM0047',t:'90% CI (Tier 2)',
+       r:'owl:sameAs',
+       note:'Identical statistical requirement'},
+      {std:'OFP',t:'90% Confidence Interval',
+       r:'owl:sameAs',
+       note:'Identical statistical requirement'},
+      {std:'Gold Std',t:'90% Confidence Interval',
+       r:'owl:sameAs',
+       note:'Identical statistical requirement'}]},
+  {id:'add',s:['Addi-','tionality'],n:'ADD',
+   lbl:'Additionality',
+   def:'Property a project has when PB > 0 and CI is above zero. '+
+       'Mechanism differs: DPB vs counterfactual rate vs CDM tool.',
+   m:[{std:'VM0047',t:'Additionality (DPB)',
+       r:'owl:ObjectProperty',
+       note:'Property of a project — confirmed via DPB mechanism'},
+      {std:'OFP',t:'Additionality (counterfactual rate)',
+       r:'owl:ObjectProperty',
+       note:'Same property type — different confirmation mechanism'},
+      {std:'Gold Std',t:'Additionality (CDM tool)',
+       r:'owl:ObjectProperty',
+       note:'Same property type — different confirmation mechanism'}]},
+  {id:'bal',s:['Balance','Check'],n:'BC',
+   lbl:'Balance Check',
+   def:'Standardised difference of means < 0.25. Confirms project '+
+       'and control groups are statistically comparable.',
+   m:[{std:'VM0047',t:'Std diff of means < 0.25',
+       r:'owl:equivalentClass',
+       note:'Same test, same threshold'},
+      {std:'OFP',t:'Covariate Balance Assessment',
+       r:'rdfs:subClassOf',
+       note:'Balance check is a specific type of covariate assessment'},
+      {std:'Gold Std',t:'Baseline Comparability Check',
+       r:'rdfs:subClassOf',
+       note:'Specific implementation of comparability checking'}]},
+  {id:'dyn',s:['Dynamic','Baseline'],n:'DB',
+   lbl:'Dynamic Baseline',
+   def:'Annually updated satellite baseline. VM0047-specific — '+
+       'OFP and Gold Standard use static baselines.',
+   m:[{std:'VM0047',t:'Dynamic Performance Baseline',
+       r:'owl:equivalentClass',
+       note:'VM0047-specific concept — exact match'},
+      {std:'OFP',t:'No equivalent (static historical baseline)',
+       r:'none',
+       note:'Genuine gap — OFP uses static baseline'},
+      {std:'Gold Std',t:'No equivalent (static modelled baseline)',
+       r:'none',
+       note:'Genuine gap — Gold Standard uses static baseline'}]}
+];
+
+var STD=[
+  {id:'VM0047',   lbl:'VM0047',       x:130,y:448,fc:'#1565c0',bc:'#e3f2fd'},
+  {id:'OFP',      lbl:'OFP',           x:360,y:488,fc:'#2e7d32',bc:'#e8f5e9'},
+  {id:'Gold Std', lbl:'Gold Standard', x:590,y:448,fc:'#e65100',bc:'#fff3e0'}
+];
+
+var RC={
+  'owl:sameAs':         '#2e7d32',
+  'owl:equivalentClass':'#1565c0',
+  'rdfs:subClassOf':    '#ef6c00',
+  'owl:ObjectProperty': '#7b1fa2',
+  'none':               '#9e9e9e'
+};
+var PC={
+  'owl:sameAs':         'p-same',
+  'owl:equivalentClass':'p-equiv',
+  'rdfs:subClassOf':    'p-sub',
+  'owl:ObjectProperty': 'p-obj',
+  'none':               'p-none'
+};
+var FM={
+  'same':'owl:sameAs','equiv':'owl:equivalentClass',
+  'sub':'rdfs:subClassOf','obj':'owl:ObjectProperty',
+  'none':'none'
+};
+
+var CX=360,CY=210,R=150,CR=44;
+var filter='all',sel=null;
+var tx=0,ty=0,sc=1,drag=null;
+var NS='http://www.w3.org/2000/svg';
+var svg=document.getElementById('vmap');
+
+function el(tag,a){
+  a=a||{};
+  var e=document.createElementNS(NS,tag);
+  for(var k in a)e.setAttribute(k,a[k]);
+  return e;
+}
+
+function mkDefs(){
+  var d=el('defs');
+  Object.keys(RC).forEach(function(r){
+    var safe=r.replace(/[^a-zA-Z]/g,'-');
+    var mk=el('marker',{id:'a-'+safe,viewBox:'0 0 10 10',
+      refX:'8',refY:'5',markerWidth:'5',markerHeight:'5',
+      orient:'auto-start-reverse'});
+    var p=el('path',{d:'M2 2L8 5L2 8',fill:'none',
+      stroke:RC[r],'stroke-width':'1.5',
+      'stroke-linecap':'round','stroke-linejoin':'round'});
+    mk.appendChild(p);d.appendChild(mk);
+  });
+  return d;
+}
+
+function applyT(){
+  var g=svg.querySelector('g#rt');
+  if(g)g.setAttribute('transform',
+    'translate('+tx+','+ty+') scale('+sc+')');
+}
+
+function render(){
+  while(svg.children.length)svg.removeChild(svg.lastChild);
+  svg.appendChild(mkDefs());
+  var gA=el('g',{id:'rt',
+    transform:'translate('+tx+','+ty+') scale('+sc+')'});
+  svg.appendChild(gA);
+  var gE=el('g'),gS=el('g'),gN=el('g');
+  gA.appendChild(gE);gA.appendChild(gS);gA.appendChild(gN);
+
+  var n=C.length;
+  C.forEach(function(c,i){
+    var a=2*Math.PI*i/n-Math.PI/2;
+    c._x=CX+R*Math.cos(a);c._y=CY+R*Math.sin(a);
+  });
+
+  STD.forEach(function(s){
+    var g=el('g',{cursor:'pointer'});
+    var r=el('rect',{x:s.x-58,y:s.y-16,width:116,height:32,
+      rx:16,fill:s.bc,stroke:s.fc,'stroke-width':'1.5'});
+    var t=el('text',{x:s.x,y:s.y+1,'text-anchor':'middle',
+      'dominant-baseline':'central','font-size':'12',
+      'font-weight':'bold',fill:s.fc,
+      'font-family':'Arial,sans-serif'});
+    t.textContent=s.lbl;
+    g.appendChild(r);g.appendChild(t);
+    (function(ss){g.onclick=function(e){
+      e.stopPropagation();showStd(ss);
+    };})(s);
+    gS.appendChild(g);
+  });
+
+  C.forEach(function(c){
+    var vis=c.m.filter(function(m){
+      if(filter==='all')return true;
+      return m.r===FM[filter];
+    });
+    var isSel=sel&&sel.id===c.id;
+    if(vis.length===0&&!isSel)return;
+
+    vis.forEach(function(m){
+      var s=null;
+      STD.forEach(function(sn){if(sn.id===m.std)s=sn;});
+      if(!s)return;
+      var col=RC[m.r]||'#9e9e9e';
+      var safe=m.r.replace(/[^a-zA-Z]/g,'-');
+      var dx=s.x-c._x,dy=(s.y-16)-c._y;
+      var dist=Math.sqrt(dx*dx+dy*dy);
+      var ux=dx/dist,uy=dy/dist;
+      var x1=c._x+ux*(CR+2),y1=c._y+uy*(CR+2);
+      var x2=s.x-ux*10,y2=(s.y-16)-uy*10;
+      var mx=(x1+x2)/2+uy*20,my=(y1+y2)/2-ux*20;
+      var op=sel?(isSel?1:0.07):0.32;
+      var sw=isSel?2.2:0.9;
+      var dash=m.r==='none'?'4 3':'none';
+      var p=el('path',{
+        d:'M'+x1+' '+y1+' Q'+mx+' '+my+' '+x2+' '+y2,
+        fill:'none',stroke:col,'stroke-width':sw,
+        opacity:op,'marker-end':'url(#a-'+safe+')',
+        'stroke-dasharray':dash});
+      gE.appendChild(p);
+    });
+
+    var dom=c.m[0].r;
+    var col=RC[dom]||'#9e9e9e';
+    var op=(sel&&!isSel)?0.28:1;
+    var g=el('g',{cursor:'pointer',opacity:op});
+    var circ=el('circle',{cx:c._x,cy:c._y,r:CR,
+      fill:isSel?col:'#fff',stroke:col,
+      'stroke-width':isSel?2.5:1.5});
+    g.appendChild(circ);
+    var baseY=c._y-(c.s.length-1)*7;
+    c.s.forEach(function(line,li){
+      var t=el('text',{x:c._x,y:baseY+li*14,
+        'text-anchor':'middle','dominant-baseline':'central',
+        'font-size':'10.5',
+        'font-weight':isSel?'bold':'normal',
+        fill:isSel?'#fff':'#222',
+        'font-family':'Arial,sans-serif'});
+      t.textContent=line;g.appendChild(t);
+    });
+    (function(cc){g.onclick=function(e){
+      e.stopPropagation();pick(cc);
+    };})(c);
+    gN.appendChild(g);
+  });
+
+  var cg=el('g');
+  cg.appendChild(el('circle',{cx:CX,cy:CY,r:54,
+    fill:'#fff',stroke:'#1B3A6B','stroke-width':'2'}));
+  var ct1=el('text',{x:CX,y:CY-8,'text-anchor':'middle',
+    'dominant-baseline':'central','font-size':'13',
+    'font-weight':'bold',fill:'#1B3A6B',
+    'font-family':'Arial,sans-serif'});
+  ct1.textContent='DPB';
+  var ct2=el('text',{x:CX,y:CY+8,'text-anchor':'middle',
+    'dominant-baseline':'central','font-size':'10',
+    fill:'#555','font-family':'Arial,sans-serif'});
+  ct2.textContent='vocabulary';
+  var ct3=el('text',{x:CX,y:CY+20,'text-anchor':'middle',
+    'dominant-baseline':'central','font-size':'9',
+    fill:'#888','font-family':'Arial,sans-serif'});
+  ct3.textContent='(OWL)';
+  cg.appendChild(ct1);cg.appendChild(ct2);
+  cg.appendChild(ct3);gN.appendChild(cg);
+}
+
+function pick(c){
+  sel=(sel&&sel.id===c.id)?null:c;
+  render();updateDp();
+}
+
+function showStd(s){
+  var cnts={};
+  C.forEach(function(c){
+    c.m.forEach(function(m){
+      if(m.std===s.id){cnts[m.r]=(cnts[m.r]||0)+1;}
+    });
+  });
+  var pills=[
+    ['owl:sameAs','p-same','&#10003;'],
+    ['owl:equivalentClass','p-equiv','&#8801;'],
+    ['rdfs:subClassOf','p-sub','&#9654;'],
+    ['owl:ObjectProperty','p-obj','&#8596;'],
+    ['none','p-none','&#10007;']
+  ].map(function(x){
+    var cnt=cnts[x[0]]||0;
+    return '<span class="pill '+x[1]+'">'+
+      x[2]+' '+cnt+' '+x[0]+'</span>';
+  }).join('');
+  document.getElementById('dp').innerHTML=
+    '<div class="dp-title" style="color:'+s.fc+'">'+
+    s.lbl+'</div>'+
+    '<div class="dp-def">OWL coverage across all 10 concepts:'+
+    '</div><div class="pills">'+pills+'</div>';
+}
+
+function updateDp(){
+  if(!sel){
+    document.getElementById('dp').innerHTML=
+      '<div class="dp-title">Select a concept node</div>'+
+      '<div class="dp-def">Click any circle to see its OWL '+
+      'relation types to VM0047, OFP, and Gold Standard.</div>';
+    return;
+  }
+  var c=sel;
+  var pills=c.m.map(function(m){
+    var cls='pill '+PC[m.r];
+    var icon=m.r==='owl:sameAs'?'&#10003;':
+             m.r==='owl:equivalentClass'?'&#8801;':
+             m.r==='rdfs:subClassOf'?'&#9654;':
+             m.r==='owl:ObjectProperty'?'&#8596;':'&#10007;';
+    var uri_str=m.r!=='none'?
+      '<span style="font-size:10px;color:#999;display:block;'+
+      'font-family:monospace">'+m.r+'</span>':'';
+    var note='<span style="font-size:10px;color:#666;display:block">'+
+      m.note+'</span>';
+    return '<span class="'+cls+'">'+icon+
+      ' <b>'+m.std+'</b><br>'+m.t+uri_str+note+'</span>';
+  }).join('');
+  document.getElementById('dp').innerHTML=
+    '<div class="dp-title">'+c.lbl+'</div>'+
+    '<div class="dp-note">Notation: '+c.n+
+    ' &nbsp;|&nbsp; URI: ramani.bv/bok/concepts/'+c.id+'</div>'+
+    '<div class="dp-def">'+c.def+'</div>'+
+    '<div class="pills">'+pills+'</div>';
+}
+
+function setFilter(f){
+  filter=f;sel=null;
+  ['all','same','equiv','sub','obj','none'].forEach(function(b){
+    var btn=document.getElementById('btn-'+b);
+    if(btn)btn.classList.remove('active');
+  });
+  var ab=document.getElementById('btn-'+f);
+  if(ab)ab.classList.add('active');
+  render();updateDp();
+}
+
+svg.addEventListener('click',function(){
+  sel=null;render();updateDp();
+});
+svg.addEventListener('mousedown',function(e){
+  drag={sx:e.clientX-tx,sy:e.clientY-ty};
+  svg.style.cursor='grabbing';e.preventDefault();
+});
+svg.addEventListener('mousemove',function(e){
+  if(!drag)return;
+  tx=e.clientX-drag.sx;ty=e.clientY-drag.sy;applyT();
+});
+svg.addEventListener('mouseup',function(){
+  drag=null;svg.style.cursor='default';
+});
+svg.addEventListener('mouseleave',function(){
+  drag=null;svg.style.cursor='default';
+});
+svg.addEventListener('wheel',function(e){
+  e.preventDefault();
+  var d=e.deltaY>0?0.92:1.09;
+  var rect=svg.getBoundingClientRect();
+  var mx=(e.clientX-rect.left)*(720/rect.width);
+  var my=(e.clientY-rect.top)*(520/rect.height);
+  tx=mx-d*(mx-tx);ty=my-d*(my-ty);
+  sc=Math.min(Math.max(sc*d,0.4),3.5);applyT();
+},{passive:false});
+
+render();
+</script>
+</body></html>
